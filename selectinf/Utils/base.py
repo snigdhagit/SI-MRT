@@ -8,7 +8,7 @@ def restricted_estimator(loss, active, solve_args={'min_its': 50, 'tol': 1.e-10}
     """
     Fit a restricted model using only columns `active`.
     Parameters
-    ----------
+    ---------
     Mest_loss : objective function
         A GLM loss.
     active : ndarray

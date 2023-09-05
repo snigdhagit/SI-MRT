@@ -333,6 +333,60 @@ class lasso(gaussian_query):
                      ridge_term,
                      randomizer)
 
+
+
+    @staticmethod
+    def WCLS(MRT_data,
+             weights,
+             feature_weights,
+             sigma=1.,
+             quadratic=None,
+             ridge_term=None,
+             randomizer_scale=None):
+
+        N = max(MRT_data.id)
+        T = max(MRT_data.decision_point)
+        n = N * T
+        p = MRT_data.shape[1] - 3
+
+        X = MRT_data.iloc[:, 3:p+3]
+        Y = MRT_data.iloc[:, 3]
+
+        if weights is None:
+            weights = np.ones(T)
+
+        Xstacked = np.zeros([1,p])
+        Ystacked  = np.zeros([1,])
+        for t in range(1,T+1):
+           Xt = MRT_data[MRT_data['decision_point'] == t].iloc[:,3:p+3] * np.sqrt(weights[t-1])
+           Yt = MRT_data[MRT_data['decision_point'] == t].iloc[:,3] * np.sqrt(weights[t-1])
+           Xstacked = np.concatenate((Xstacked, Xt), axis=0)
+           Ystacked = np.concatenate((Ystacked, Yt), axis=0)
+
+        Xstacked = Xstacked[1:]
+        Ystacked = Ystacked[1:]
+        loglike = rr.glm.gaussian(Xstacked,
+                                  Ystacked,
+                                  coef=1. / sigma ** 2,
+                                  quadratic=quadratic)
+
+
+        mean_diag = np.mean((X ** 2).sum(0))
+
+        if ridge_term is None:
+            ridge_term = np.sqrt(mean_diag) / (np.sqrt(n - 1) * sigma ** 2)
+
+        if randomizer_scale is None:
+            randomizer_scale = np.sqrt(mean_diag) * 0.5 * np.std(Y, ddof=1)
+
+        randomizer = randomization.isotropic_gaussian((p,), randomizer_scale)
+
+        return lasso(loglike,
+                     np.asarray(feature_weights) / sigma ** 2,
+                     ridge_term,
+                     randomizer)
+
+
     @staticmethod
     def logistic(X,
                  successes,
