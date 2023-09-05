@@ -146,7 +146,7 @@ def gaussian_instance(n=100,
         beta *= np.sqrt(n)
         sigmaX = sigmaX / np.multiply.outer(scaling, scaling)
 
-    active = np.zeros(p, np.bool)
+    active = np.zeros(p, bool)
     active[beta != 0] = True
 
     # noise model
@@ -158,4 +158,17 @@ def gaussian_instance(n=100,
         return tdist.rvs(df, size=n) / sd_t
 
     Y = (X.dot(beta) + _noise(n, df)) * sigma
-    return X, Y, beta * sigma, np.nonzero(active)[0], sigma, sigmaX
+    return X, Y, beta * sigma, np.nonzero(active)[0], sigma, sigmaX\
+
+# X, Y, beta = gaussian_instance(n=100,
+#                       p=200,
+#                       s=7,
+#                       sigma=5,
+#                       rho=0.,
+#                       signal=7,
+#                       random_signs=False,
+#                       df=np.inf,
+#                       scale=True,
+#                       center=True,
+#                       equicorrelated=True)[:3]
+
