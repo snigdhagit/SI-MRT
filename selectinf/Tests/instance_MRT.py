@@ -29,11 +29,11 @@ def generate_individual(id,
                         trueP=trueP,
                         alpha=0.9,
                         sigma_residual=0.5,
-                        sigma_AR=0.5,
+                        sigma_AR=0.7,
                         beta_11=0.4,
                         theta1=0.8,
                         signal_strength=0.2,
-                        baseline_strength=-0.2):
+                        baseline_strength=-0.5):
 
 
     beta_logit = np.hstack((-1, 1.6 * np.ones(P) / P))
@@ -99,26 +99,24 @@ def MRT_instance(N=N,
     Y = np.array(MRT_data[MRT_data["id"] < n1 + 1].iloc[:, P + 4]) - np.dot(np.array(MRT_data[MRT_data["id"] < n1 + 1].iloc[:, 2:P + 2]), alphahat)
     At_Pt = np.array(MRT_data[MRT_data["id"] < n1 + 1].iloc[:, P + 3]) - np.array(MRT_data[MRT_data["id"] < n1 + 1].iloc[:, P + 2])
     X = np.array(MRT_data[MRT_data["id"] < n1 + 1].iloc[:, 2:P + 2].multiply(At_Pt, axis="index"))
+    scaling = X.std(0) * np.sqrt(N*T)
+    X /= scaling
+    
     beta = (beta_11 / trueP) * np.concatenate((np.ones(trueP), np.zeros(P - trueP)))
     A = MRT_data[MRT_data["id"] < n1 + 1].iloc[:, :2]
-
-    # X.shape
-    # Y.shape
-    # A = pd.concat([A, pd.DataFrame(X,Y)], axis=0)
     A['Y'] = Y.tolist()
+    A = A.join(pd.DataFrame(X, columns = ['State'+str(i) for i in range(1,P+1)]))
 
-    for i in range(P):
-        A['State' + str(i + 1)] = X[:, i].tolist()
+
+
     # active = np.zeros(P, bool)
     # active[beta != 0] = True
 
-    scaling = X.std(0) * np.sqrt(n)
-    X /= scaling
     # scaling = Y.std(0) * np.sqrt(n)
     # Y /= scaling
     return X, Y, beta, A
 
-# MRT = MRT_instance(N=750, T=5, P= 100)[3]
+MRT = MRT_instance(N=750, T=5, P= 100)[3]
 # print(X.shape)
 # print(Y.shape)
-# print(MRT)
+print(MRT)
