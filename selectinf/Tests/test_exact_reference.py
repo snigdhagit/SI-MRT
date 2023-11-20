@@ -28,8 +28,8 @@ def test_inf(n=500,
     while True:
 
         inst, const = MRT_instance, lasso.WCLS
-        #inst, const = gaussian_instance, lasso.gaussian
-        signal = np.sqrt(signal_fac * 2 * np.log(p))
+        #inst, const = MRT_instance, lasso.gaussian
+        #signal = np.sqrt(signal_fac * 2 * np.log(p))
 
         # X, Y, beta = inst(n=n,
         #                   p=p,
@@ -60,6 +60,12 @@ def test_inf(n=500,
                      feature_weights = W,
                      ridge_term=0.,
                      randomizer_scale=randomizer_scale * np.sqrt(dispersion))
+
+        # conv = const(X,
+        #              Y,
+        #              W,
+        #              ridge_term=0.,
+        #              randomizer_scale=randomizer_scale * np.sqrt(dispersion))
 
         signs = conv.fit()
         nonzero = signs != 0
@@ -124,6 +130,7 @@ def test_inf(n=500,
 # plt.plot(grid, ecdf_pivot(grid), c='blue', marker='^')
 # plt.plot(grid, grid, 'k--')
 # plt.show()
+
 
 
 ### Functions for Naive and Data Splitting
@@ -343,11 +350,11 @@ def compare_inf(n=500,
 
 
 
-# nsim = 500
-# coverage1 = []
-# 
-# for i in range(nsim):
-#     coverage1 = test_inf(CI=True)[0]
-#
-# print(np.mean(coverage1))
+nsim = 10
+coverage1 = []
+
+for i in range(nsim):
+    coverage1 = test_inf(CI=True)[0]
+
+print(np.mean(coverage1))
 
