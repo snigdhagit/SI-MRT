@@ -5,15 +5,15 @@ import statsmodels.api as sm
 
 # Define constants
 T = 30
-N = 300
+N = 900
 P = 50
 trueP = 3
-sigma_residual = 1.5
+sigma_residual = 1
 sigma_randint = 1.5
 rho = 0.7
 txt_intercept = -0.2
-beta_logit = np.concatenate(([-1], 1.6 * np.ones(P) / P))
-beta_11 = 0.8
+beta_logit = np.concatenate(([-1], 0.8 * np.ones(P) / P))
+beta_11 = 2
 theta1 = 0.8
 
 # Generate AR(1) process
@@ -67,12 +67,12 @@ def MRT_instance(N=N):
           individual_data_frames.append(fake_individual)
 
     MRT_data = pd.concat(individual_data_frames, ignore_index=True)
-    # print(MRT_data.columns)
     n1 = int(2 * N / 3)
     X1 = MRT_data[MRT_data["id"] > n1].iloc[:, 2:P + 2]
     Y1 = MRT_data[MRT_data["id"] > n1].iloc[:, P + 4]
 
-    alphahat = np.array(sm.OLS(Y1, X1).fit().params)
+    # alphahat = np.array(sm.OLS(Y1, X1).fit().params)
+    alphahat = theta1 * np.ones(P)
     Y = np.array(MRT_data[MRT_data["id"] < n1 + 1].iloc[:, P + 4]) - np.dot(np.array(MRT_data[MRT_data["id"] < n1 + 1].iloc[:, 2:P + 2]), alphahat)
     At_Pt = np.array(MRT_data[MRT_data["id"] < n1 + 1].iloc[:, P + 3]) - np.array(MRT_data[MRT_data["id"] < n1 + 1].iloc[:, P + 2])
     X = np.array(MRT_data[MRT_data["id"] < n1 + 1].iloc[:, 2:P + 2].multiply(At_Pt, axis="index"))
@@ -82,9 +82,8 @@ def MRT_instance(N=N):
     
     beta = (beta_11/trueP) * np.concatenate((np.ones(trueP), np.zeros(P - trueP)))
     A = MRT_data[MRT_data["id"] < n1 + 1].iloc[:, :2]
-    A['Y'] = Y.tolist()
     A = A.join(pd.DataFrame(X, columns = ['State'+str(i) for i in range(1,P+1)]))
-
+    A['Y'] = Y.tolist()
 
 
     # active = np.zeros(P, bool)
@@ -95,10 +94,11 @@ def MRT_instance(N=N):
     return X, Y, beta, A
 
 
-# MRT = MRT_instance(N=300)[3]
+# X, Y, beta, MRT = MRT_instance(N=300)[:4]
+# print(MRT)
+# print(MRT.shape)
+# print(X.shape)
 # print(MRT.columns)
 # print(max(MRT.id))
 # MRT.to_csv('MRT.csv')
 
-# Y = MRT_instance(N=300, T=20, P= 100, sigma_AR=0.)[1]
-# print(np.std(Y))

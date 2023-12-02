@@ -13,18 +13,17 @@ from ..lasso import lasso
 from ..Utils.base import selected_targets, selected_targets_WCLS
 from ..exact_reference import exact_grid_inference
 
-def test_inst(N=300):
+def test_inst(N=900):
 
     while True:
 
         inst, const = MRT_instance, lasso.gaussian
-        # inst, const = MRT_instance, lasso.WCLS
 
         X, Y, beta, A = MRT_instance(N=N)[:4]
 
         n1, p = X.shape
 
-        n = int(n1/5)
+        n = int(n1/30)
 
         sigma_ = np.std(Y)
 
@@ -42,18 +41,44 @@ def test_inst(N=300):
         nonzero = beta != 0
 
         beta_target = np.linalg.pinv(X[:, nonzero]).dot(X.dot(beta))
-        # print(beta_target)
+
+        # GEE
+        Xf = np.array(A.iloc[:, 2:-1])
+        Xf = Xf[:, nonzero]
+        yf = A['Y']
+        groups = A['id']
+
+        # fit the GEE model
+        model = sm.GEE(yf, Xf, groups=groups, family=sm.families.Gaussian(), cov_struct=sm.cov_struct.Independence())
+        result = model.fit(cov_type='robust')
+
+        GEE_intervals = np.array(result.conf_int(alpha=0.1))
+        lci1 = GEE_intervals[:, 0]
+        uci1 = GEE_intervals[:, 1]
+        coverage1 = (lci1 < beta_target) * (uci1 > beta_target)
+        length1 = uci1 - lci1
+
+        GEE_est = np.array(result.params)
+
+        print(GEE_est)
+
+        robust_covariance = result.cov_robust
+
+        print(np.sqrt(np.diag(robust_covariance)))
+
+        bread = result.cov_naive
+        sandwich =  np.dot(np.dot(np.linalg.inv(bread), robust_covariance), np.linalg.inv(bread))
+        print(sandwich)
+        print(np.sqrt(np.diag(bread)))
 
         # Naive
-        olsn = sm.OLS(Y, X[:, nonzero])
-        olsfit = olsn.fit()
-
-        scale = olsfit.scale
-
-        beta_est = olsfit.params
-        cov_est = np.sqrt(np.diag(olsfit.cov_params()))
-        # print(beta_est)
-        # print(cov_est)
+        # olsn = sm.OLS(Y, X[:, nonzero])
+        # olsfit = olsn.fit()
+        #
+        # scale = olsfit.scale
+        #
+        # beta_est = olsfit.params
+        # cov_est = np.sqrt(np.diag(olsfit.cov_params()))
 
         # naive_intervals = olsfit.conf_int(alpha=0.1, cols=None)
         # lci1 = naive_intervals[:, 0]
@@ -72,24 +97,29 @@ def test_inst(N=300):
                                        beta,
                                        dispersion=dispersion)
 
-        print(dispersion)
+        e1 = target_spec.observed_target
+        c1 = target_spec.cov_target
 
-        # e1 = target_spec.observed_target
-        # c1 = np.sqrt(np.diag(target_spec.cov_target))
+        print(e1)
+        print(np.sqrt(np.diag(c1)))
 
-        # print(c1)
 
         target_spec2 = selected_targets_WCLS(conv.loglike,
                                             beta,
                                             K = conv.K,
-                                            dispersion = 1.5)
+                                            dispersion = 1)
 
-        # e2 = target_spec2.observed_target
-        # c2 = np.sqrt(np.diag(target_spec2.cov_target))
+        e2 = target_spec2.observed_target
+        c2 = target_spec2.cov_target
 
-        # print(c2)
+        sandwich2 = np.dot(np.dot(np.linalg.inv(c1), c2), np.linalg.inv(c1))
+        print(sandwich2)
+
+        print(e2)
+        print(np.sqrt(np.diag(robust_covariance))/np.sqrt(np.diag(c2)))
 
         # np.testing.assert_allclose(beta_est, e2, rtol=1e-07, atol=0, equal_nan=True, err_msg='', verbose=True)
+
 
         lower, upper = [], []
         ntarget = nonzero.sum()
@@ -109,26 +139,27 @@ def test_inst(N=300):
         length2 = uci2 - lci2
 
 
-        return np.mean(coverage2), np.mean(length2)
+        return np.mean(coverage2), np.mean(length2), np.mean(coverage1), np.mean(length1)
 
-# print(test_inst())
+print(test_inst())
 
-nsim = 50
-coverage = []
-length = []
-# coverage1 = []
-# length1 = []
-
-for i in range(nsim):
-    coverage.append(test_inst()[0])
-    length.append(test_inst()[1])
-    # coverage1.append(test_inst()[1])
-    # length1.append(test_inst()[3])
-
-print(np.mean(coverage))
-# print(np.mean(coverage1))
-print(np.mean(length))
-# print(np.mean(length1))
+# nsim = 0
+# bcoverage = []
+# blength = []
+# bcoverage1 = []
+# blength1 = []
+#
+# for i in range(nsim):
+#     coverage2, length2, coverage1, length1 = test_inst()
+#     bcoverage.append(coverage2)
+#     blength.append(length2)
+#     bcoverage1.append(coverage1)
+#     blength1.append(length1)
+#
+# print(np.mean(bcoverage))
+# print(np.mean(bcoverage1))
+# print(np.mean(blength))
+# print(np.mean(blength1))
 
 def naive_test(N=300,
                p=50,
@@ -138,7 +169,7 @@ def naive_test(N=300,
 
         inst, const = MRT_instance, lasso.gaussian
 
-        X, Y, beta, A = MRT_instance(N=N, P=p, T=5, trueP = trueP, sigma_AR=0.9)
+        X, Y, beta, A = MRT_instance(N=N)
 
         nonzero = beta != 0
 

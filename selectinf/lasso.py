@@ -131,12 +131,13 @@ class lasso(gaussian_query):
         self.observed_opt_state = np.concatenate([initial_scalings,
                                                   initial_unpenalized])
 
+        #Restricted_MLE
         _beta_unpenalized = restricted_estimator(self.loglike,
                                                  self._overall,
                                                  solve_args=solve_args)
 
-        # \bar{\beta}_{E \cup U} piece -- the unpenalized M estimator
 
+        # \bar{\beta}_{E \cup U} piece -- the unpenalized M estimator
         beta_bar = np.zeros(p)
         beta_bar[overall] = _beta_unpenalized
         self._beta_full = beta_bar
@@ -156,6 +157,15 @@ class lasso(gaussian_query):
                                                                      beta_bar,
                                                                      active,
                                                                      unpenalized)
+
+        X, y = self.loglike.data
+        n, p = X.shape
+
+        # estimate K
+        R_tilde = (y - np.dot(X, beta_bar)) ** 2 # squared residuals
+
+        self.K =  np.dot(np.dot(X.T, np.diagflat(R_tilde)), X)
+
 
         # fill in pieces of query
 
@@ -214,6 +224,7 @@ class lasso(gaussian_query):
 
         #### to be fixed -- set the cov_score here without dispersion
 
+        # self._unscaled_cov_score = self.K
         self._unscaled_cov_score = _hessian
 
         self.num_opt_var = num_opt_var
@@ -337,7 +348,6 @@ class lasso(gaussian_query):
 
     @staticmethod
     def WCLS(MRT_data,
-             weights,
              feature_weights,
              sigma=1.,
              quadratic=None,
@@ -350,26 +360,12 @@ class lasso(gaussian_query):
         p = MRT_data.shape[1] - 3
 
         X = MRT_data.iloc[:, 3:p+3]
-        Y = MRT_data.iloc[:, 3]
+        Y = MRT_data.iloc[:, -1]
 
-        if weights is None:
-            weights = np.ones(T)
-
-        Xstacked = np.zeros([1,p])
-        Ystacked  = np.zeros([1,])
-        for t in range(1,T+1):
-           Xt = MRT_data[MRT_data['decision_point'] == t].iloc[:,3:p+3] * np.sqrt(weights[t-1])
-           Yt = MRT_data[MRT_data['decision_point'] == t].iloc[:,3] * np.sqrt(weights[t-1])
-           Xstacked = np.concatenate((Xstacked, Xt), axis=0)
-           Ystacked = np.concatenate((Ystacked, Yt), axis=0)
-
-        Xstacked = Xstacked[1:]
-        Ystacked = Ystacked[1:]
-        loglike = rr.glm.gaussian(Xstacked,
-                                  Ystacked,
+        loglike = rr.glm.gaussian(X,
+                                  Y,
                                   coef=1. / sigma ** 2,
                                   quadratic=quadratic)
-
 
         mean_diag = np.mean((X ** 2).sum(0))
 
@@ -377,7 +373,7 @@ class lasso(gaussian_query):
             ridge_term = np.sqrt(mean_diag) / (np.sqrt(n - 1) * sigma ** 2)
 
         if randomizer_scale is None:
-            randomizer_scale = np.sqrt(mean_diag) * 0.5 * np.std(Y, ddof=1)
+            randomizer_scale = np.sqrt(mean_diag) * 0.5 * np.std(Ystacked, ddof=1)
 
         randomizer = randomization.isotropic_gaussian((p,), randomizer_scale)
 

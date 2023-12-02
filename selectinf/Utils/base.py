@@ -3,6 +3,8 @@ import numpy as np
 import regreg.api as rr
 import regreg.affine as ra
 
+import statsmodels.api as sm
+
 
 def restricted_estimator(loss, active, solve_args={'min_its': 50, 'tol': 1.e-10}):
     """
@@ -39,7 +41,6 @@ class TargetSpec(NamedTuple):
     cov_target: np.ndarray
     regress_target_score: np.ndarray
     alternatives: list
-
 
 def selected_targets(loglike,
                      solution,
@@ -85,6 +86,75 @@ def selected_targets(loglike,
                       regress_target_score,
                       alternatives)
 
+def selected_targets_WCLS(loglike,
+                          MRT,
+                          solution,
+                          K,
+                          features=None,
+                          sign_info={},
+                          dispersion=None,
+                          solve_args={'tol': 1.e-12, 'min_its': 100}):
+
+    if features is None:
+        features = solution != 0
+
+    X, y = loglike.data
+    n, p = X.shape
+
+    observed_target = restricted_estimator(loglike, features, solve_args=solve_args)
+    linpred = X[:, features].dot(observed_target)
+
+    # GEE
+    Xf = np.array(MRT.iloc[:, 2:-1])
+    Xf = X[:, features]
+    yf = MRT['Y']
+    groups = MRT['id']
+
+    # fit the GEE model
+    model = sm.GEE(yf, Xf, groups=groups, family=sm.families.Gaussian(), cov_struct=sm.cov_struct.Independence())
+    result = model.fit(cov_type='robust')
+    cov_target = result.cov_robust
+
+    Hfeat = _compute_hessian(loglike,
+                             solution,
+                             features)[1]
+
+    # Qfeat = H_{E,E}
+    Qfeat = Hfeat[features]
+    Qinv = np.linalg.inv(Qfeat)
+    _score_linear = -Hfeat
+
+
+    # Kfeat = K_{E,E}
+    Kfeat = K[:, features]
+    Kfeat = Kfeat[features]
+
+    # cov_target = Qinv @ Kfeat @ Qinv
+    alternatives = ['twosided'] * features.sum()
+    features_idx = np.arange(p)[features]
+
+    for i in range(len(alternatives)):
+        if features_idx[i] in sign_info.keys():
+            alternatives[i] = sign_info[features_idx[i]]
+
+    if dispersion is None:  # use Pearson's X^2
+        dispersion = _pearsonX2(y,
+                                linpred,
+                                loglike,
+                                observed_target.shape[0])
+
+    regress_target_score = np.zeros((Qinv.shape[0], p))
+    regress_target_score[:, features] = Qinv
+
+
+
+
+    return TargetSpec(observed_target,
+                      cov_target * dispersion,
+                      regress_target_score,
+                      alternatives)
+
+
 def _compute_hessian(loglike,
                      beta_bar,
                      *bool_indices):
@@ -118,6 +188,40 @@ def _compute_hessian(loglike,
         return (_hessian,) + tuple(parts)
     else:
         return _hessian
+
+#
+# def _compute_gradient(loglike,
+#                      beta_bar,
+#                      *bool_indices):
+#
+#     X, y = loglike.data
+#     linpred = X.dot(beta_bar)
+#     n = linpred.shape[0]
+#
+#     # W = loglike.smooth_objective(beta_bar, 'grad')
+#     #
+#     # print(W.shape)                        #shouldn't its shape be (n,)
+#     #
+#     # parts = [np.dot(np.dot(X[:, bool_idx].T, np.diagflat(W[:, None]**p)), X[:, bool_idx])  for bool_idx in bool_indices]
+#     # _gradient = np.dot(X.T, W[:, None])
+#
+#
+#     if hasattr(loglike, "gradient"): #loglike.saturated_loss.gradient doesnt work
+#         W = loglike.gradient(beta_bar)
+#         print(W.shape)
+#         # Active idx, then unpenalized idx
+#         parts = [np.dot(np.dot(X[:, bool_idx].T, np.diagflat(W[:, None]**2)), X[:, bool_idx]) for bool_idx in bool_indices]
+#         _gradient = np.dot(X.T, W[:, None])
+#     else:
+#         raise ValueError('not a smooth loglikelihood')
+#
+#
+#     if bool_indices:
+#         # Returns _gradient, _gradient_active, _gradient_unpen
+#         return (_gradient,) + tuple(parts)
+#     else:
+#         return _gradient
+#
 
 
 def _pearsonX2(y,
