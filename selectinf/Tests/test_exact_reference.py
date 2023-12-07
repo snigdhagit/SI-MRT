@@ -318,7 +318,7 @@ def compare_inf(N=300,
 
 # print(compare_inf(300))
 
-nsim = 1
+nsim = 500
 bcoverage1 = []
 bcoverage1w = []
 bcoverage2 = []
@@ -328,7 +328,7 @@ blength1w = []
 blength2 = []
 blength3 = []
 for i in range(nsim):
-    coverage1, coverage1w, coverage2, coverage3, length1, length1w, length2, length3 = compare_inf(900)
+    coverage1, coverage1w, coverage2, coverage3, length1, length1w, length2, length3 = compare_inf(3000)
     bcoverage1.append(np.mean(coverage1))
     bcoverage1w.append(np.mean(coverage1w))
     bcoverage2.append(np.mean(coverage2))
@@ -343,9 +343,9 @@ Length_Data = pd.DataFrame({"Selective CI Lengths": blength1, "Selective CI Leng
 
 # print(Coverage_Data)
 # print(Length_Data)
-
-Coverage_Data.to_csv('Coverage_Data.csv')
-Length_Data.to_csv('Length_Data.csv')
+#
+# Coverage_Data.to_csv('Coverage_Data.csv')
+# Length_Data.to_csv('Length_Data.csv')
 print(np.mean(np.asarray(bcoverage1)))
 print(np.mean(np.asarray(bcoverage1w)))
 print(np.mean(np.asarray(bcoverage2)))
