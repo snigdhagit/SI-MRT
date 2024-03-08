@@ -224,8 +224,8 @@ class lasso(gaussian_query):
 
         #### to be fixed -- set the cov_score here without dispersion
 
-        # self._unscaled_cov_score = self.K
-        self._unscaled_cov_score = _hessian
+        self._unscaled_cov_score = self.K
+        # self._unscaled_cov_score = _hessian
 
         self.num_opt_var = num_opt_var
 
@@ -337,7 +337,11 @@ class lasso(gaussian_query):
         if randomizer_scale is None:
             randomizer_scale = np.sqrt(mean_diag) * 0.5 * np.std(Y, ddof=1)
 
-        randomizer = randomization.isotropic_gaussian((p,), randomizer_scale)
+        # randomizer = randomization.isotropic_gaussian((p,), randomizer_scale)
+
+
+        _hessian = np.dot(X.T, X)
+        randomizer = randomization.gaussian(_hessian)
 
         return lasso(loglike,
                      np.asarray(feature_weights) / sigma ** 2,

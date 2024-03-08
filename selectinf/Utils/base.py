@@ -124,7 +124,6 @@ def selected_targets_WCLS(loglike,
     Qinv = np.linalg.inv(Qfeat)
     _score_linear = -Hfeat
 
-
     # Kfeat = K_{E,E}
     Kfeat = K[:, features]
     Kfeat = Kfeat[features]

@@ -7,13 +7,13 @@ import statsmodels.api as sm
 T = 30
 N = 900
 P = 50
-trueP = 3
+trueP = 5
 sigma_residual = 1
 sigma_randint = 1.5
 rho = 0.7
 txt_intercept = -0.2
 beta_logit = np.concatenate(([-1], 0.8 * np.ones(P) / P))
-beta_11 = 2
+beta_11 = 4.4
 theta1 = 0.8
 
 # Generate AR(1) process
@@ -25,7 +25,7 @@ def arima_sim(rho, n, sd=1):
 
 
 # Generate individual data
-def generate_individual(id=1):
+def generate_individual(id=1, beta_11=beta_11):
     all_states = np.column_stack([arima_sim(rho, T) for _ in range(P)])
 
     all_actions = np.zeros(T)
@@ -57,13 +57,13 @@ def generate_individual(id=1):
     })
     return df_individual
 
-def MRT_instance(N=N):
+def MRT_instance(N=N, beta_11=beta_11):
 
     individual_data_frames = []
 
     # Generate individual data and collect them in the list
     for n in range(1, N + 1):
-          fake_individual = generate_individual(n)  # Call the generate_individual function
+          fake_individual = generate_individual(n, beta_11)  # Call the generate_individual function
           individual_data_frames.append(fake_individual)
 
     MRT_data = pd.concat(individual_data_frames, ignore_index=True)
